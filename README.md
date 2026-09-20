@@ -195,30 +195,55 @@ more depth, so splitting this further would mostly duplicate them.
 
 ## Sample Answer
 
-<!-- One complete question and answer, pasted as text, with the source line
-     visible. Milestone 4. -->
-
-**Question:**
+**Question:** How much does it cost to do laundry at Aldridge Hall?
 
 **Answer:**
 
 ```
+  (best distance 0.213, cutoff 0.75)
+
+Laundry at Aldridge Hall costs $1.75 to wash and $1.50 to dry.
+
+This information comes from `housing_aldridge_hall.txt` and
+`housing_aldridge_hall_laundry.txt`.
+
+Sources retrieved: housing_aldridge_hall.txt, housing_aldridge_hall_laundry.txt,
+housing_innisfree_hall.txt, housing_innisfree_hall_laundry.txt,
+housing_old_brewhouse.txt
 ```
 
-**My relevance cutoff:**
+Worth noting what the prompt contained: four *different* halls' laundry prices,
+three of them wrong for this question. Innisfree charges $1.75/$1.75 and Old
+Brewhouse $1.50/$1.50. The answer takes Aldridge's numbers and names both files
+that carry them — I checked, and the prices really are in both.
 
-<!-- The number you set in config.py, and how you got there.
+**My relevance cutoff:** 0.75
 
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
+The two groups came out cleanly separated. The five questions my corpus covers
+landed at 0.2133–0.4114; the five in `OUT_OF_SCOPE` landed at 0.8246–0.9335. On
+those ten numbers alone the gap is 0.41 wide and almost any cutoff works, so I
+rephrased each of my five questions three more ways to find where the real
+questions actually top out. They top out at **0.6663** — "Do buses run on
+Sunday?", which retrieves `transit_shuttle.txt` at rank 1 with the answer in it.
+The starter's 0.6 refuses that question. The document says "shuttle" and never
+says "bus."
 
-     Milestone 4. -->
+So the band with nothing real in it is 0.6663–0.8246, and I put the cutoff at
+its midpoint. That still refuses all five `OUT_OF_SCOPE` questions with 0.075 to
+spare, which is what criterion 3 measures.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| How much does it cost to do laundry at Aldridge Hall? | yes | 0.2133 |
+| Approximately how many pages of reading per week should a student expect in HIST 118 Modern World History? | yes | 0.2374 |
+| Which specific group study room numbers have whiteboards that actually erase? | yes | 0.3883 |
+| What is the maximum number of hours a student can work on campus per week during the term? | yes | 0.3901 |
+| How often does the campus shuttle run on weekends? | yes | 0.4114 |
+| What is the capital of Mongolia? | no | 0.8246 |
+| What is the recommended dosage of ibuprofen for a headache? | no | 0.8442 |
+| Who won the 1994 World Cup? | no | 0.8859 |
+| How do I write a for loop in Rust? | no | 0.8907 |
+| How do I change the oil in a diesel engine? | no | 0.9335 |
 
 ## How I Used AI
 

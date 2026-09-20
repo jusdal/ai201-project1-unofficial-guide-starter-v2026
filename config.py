@@ -44,6 +44,11 @@ CHUNK_OVERLAP = 0  # characters shared between neighbouring chunks
 
 # ─── Retrieval (Milestone 4) ─────────────────────────────────────────────────
 
+# Left at 5. The document holding the answer came back at rank 1 for all five
+# questions in questions.py, so this is insurance rather than necessity — but
+# it costs ~600 tokens and the grounding instruction ignores the extra chunks
+# cleanly, including the four CS 210 docs at 0.63+ that the study-room question
+# drags in.
 TOP_K = 5  # how many chunks to pull back per question
 
 # The relevance gate. If the best chunk is further away than this, the system
@@ -51,10 +56,13 @@ TOP_K = 5  # how many chunks to pull back per question
 #
 # LOWER IS BETTER: 0.3 is a close match, 0.9 is unrelated.
 #
-# 0.6 is a reasonable starting point, not a right answer. Milestone 4 has you
-# measure your own two groups of distances and put the cutoff in the gap.
-# Most corpora land somewhere between 0.45 and 0.75.
-THRESHOLD = 0.6
+# 0.75, not the starter's 0.6. The five questions in questions.py sit at
+# 0.21–0.41 and the five in OUT_OF_SCOPE at 0.82–0.93, which looks like a wide
+# gap — but rephrasing the real questions pushes the worst one to 0.6663
+# ("Do buses run on Sunday?", which retrieves transit_shuttle.txt at rank 1
+# and would be refused at 0.6). The only band with nothing real in it is
+# 0.6663–0.8246, and 0.75 is its midpoint. See the README.
+THRESHOLD = 0.75
 
 
 # ─── Models ──────────────────────────────────────────────────────────────────
