@@ -23,8 +23,9 @@ For at least 4 of my 5 test questions, the retrieved chunks include one that
 contains the answer.
 
 **Why this target:**
-<!-- e.g. "One of my questions is about a topic only two documents mention, so
-     I expect that one to be hard." -->
+I picked 4 of 5 because the work-hours question is the one answer that isn't
+duplicated anywhere else in my corpus, and it shares phrasing ("hours a
+week") with nine other course-workload docs that could plausibly outrank it.
 
 ---
 
@@ -33,8 +34,10 @@ contains the answer.
 Every answer the system produces names at least one source document.
 
 **Why this target:**
-<!-- Why all five and not four? What about your setup makes that achievable —
-     or what would have to go wrong for it not to be? -->
+I picked 5 of 5 because the source list is attached by the pipeline code
+itself from whatever chunks were retrieved, not left up to the model to
+remember — so there's no obvious way for a passed question to come back
+without one.
 
 ---
 
@@ -50,46 +53,39 @@ in at least 4 of 5 tries.
      just keep five of them, or the "4 of 5" above has nothing to be 4 of. -->
 
 **Why this target:**
-<!-- What did your distances look like when you set the cutoff in Milestone 4?
-     Was there a clean gap, or did the two groups overlap? -->
+I picked 4 of 5 because my out-of-scope questions are on topics with nothing
+in common with my corpus (car engines, sports trivia, medication dosages), so
+I expect them to sit far from any real question — but I'm leaving one slot
+for a surprise, since an embedding model can occasionally place unrelated
+text closer than it should be.
 
 ---
 
-## 4. Something about your chunks
+## 4. No chunk is under 150 characters or over 600
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know if your chunks were the right size? Name something
-     countable or observable.
-
-     Examples of the right shape — don't copy these, they should come from
-     what you actually saw in Milestone 3:
-       - "At least 4 of 5 sampled chunks read as a complete thought, with no
-          sentence cut in half at either end."
-       - "No chunk is shorter than 200 characters, since anything below that
-          in my corpus turned out to be a heading with no content under it." -->
-
-
+Across every chunk `split_documents` produces, none falls outside the
+150–600 character range.
 
 **Why this target:**
-
-
+Every real document in `campus_life` falls between 183 characters
+(`course_hist_118_exams.txt`) and 554 (`housing_old_brewhouse.txt`). A chunk
+outside 150–600 would mean something broke — a document got truncated,
+merged with its neighbor, or split mid-file — not that a document just
+happened to run long or short.
 
 ---
 
-## 5. Your choice
+## 5. No hallucinated entities
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. It could be about
-     speed, about refusals, about a particular kind of question your corpus
-     handles badly, about source attribution being correct rather than merely
-     present — anything, as long as it names a number or an observable
-     outcome. -->
-
-
+The system never names a hall, course, or dining hall that isn't one of my 88
+real documents, in 5 of 5 trials.
 
 **Why this target:**
+This is 5 of 5, not 4 of 5, because there's no reasonable rate of making up a
+building that doesn't exist — a student would actually go looking for
+"Wexford Hall" laundry hours that were never real. It's also the easiest
+thing on this list to check: the full list of valid entities is just the 88
+filenames in `corpora/campus_life/documents/`.
 
 
 
