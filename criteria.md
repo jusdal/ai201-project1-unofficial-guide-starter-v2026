@@ -77,8 +77,9 @@ happened to run long or short.
 
 ## 5. No hallucinated entities
 
-The system never names a hall, course, or dining hall that isn't one of my 88
-real documents, in 5 of 5 trials.
+Across all five test questions in `questions.py`, the system never names a
+hall, course, or dining hall that does not appear in the 88 filenames in
+`corpora/campus_life/documents/` — in 5 of 5 trials.
 
 **Why this target:**
 This is 5 of 5, not 4 of 5, because there's no reasonable rate of making up a
