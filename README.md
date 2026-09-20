@@ -29,54 +29,169 @@
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** 400 characters, title line included
+**Overlap:** 0 characters — replaced by repeating the title line on every chunk
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+Produced by `chunker.py::split_documents`. Paragraph-aware packing: cut only on
+paragraph boundaries, pack whole paragraphs up to 400 characters, and prepend
+the document's title line to every chunk.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+**What the starter did.** `python app.py index` reported:
 
-     Milestone 3. -->
+```
+loaded   88 documents, 27,908 characters, ~317 characters per document
+chunked  88 chunks, 317 characters on average (shortest 178, longest 549),
+         produced by chunker.py::fallback_split
+```
+
+88 documents, 88 chunks. The starter cuts at 800 characters and the longest
+post in campus_life is 549, so it never split anything. That was mostly the
+right call, and it's the first thing I had to decide about rather than
+"improve". These posts are already topic-scoped by whoever built the corpus —
+`housing_aldridge_hall.txt`, `housing_aldridge_hall_laundry.txt` and
+`housing_aldridge_hall_noise.txt` are three separate files. Most of the
+chunking was done for me in the filenames.
+
+**Why I still changed it.** Two things about the documents, both from reading
+them rather than from the summary line:
+
+1. The seven `housing_*` "what it's actually like" posts really do hold several
+   topics at once. Old Brewhouse (549 characters) runs: the building, then "the
+   good", then "the bad", then a last paragraph that packs laundry prices *and*
+   noise together. As one 549-character chunk, a laundry question has to find
+   "$1.50 wash, $1.50 dry" underneath 300 characters about 1902 brickwork and
+   uneven heating. Those are the posts that should come apart.
+
+2. **Every single post opens with a one-line title**, median 26 characters —
+   "The Atrium", "On-campus work", "Old Brewhouse — what it's actually like".
+   All 88 of them. This is why I did *not* just split on `\n\n`, which was my
+   first instinct and would have been worse than leaving the starter alone. It
+   produces 271 chunks, 88 of which are nothing but a title — the fragment
+   failure mode, 88 times over. Worse, it orphans the bodies: "Laundry costs
+   $1.75 wash, $1.75 dry, app-based" never names a building. Only the title
+   line does. Cut loose, that chunk matches every laundry question in the
+   corpus equally well and answers none of them.
+
+So the title line gets repeated onto every chunk instead of being a chunk. That
+is also what killed the overlap: once you cut on paragraph boundaries no chunk
+ever starts mid-thought, so there's nothing for a character overlap to repair.
+The job overlap was doing — carrying context across the cut — is done better by
+the title at ~26 characters than by 120 characters of the previous paragraph's
+tail.
+
+**Why 400.** I measured the document lengths first: median 309, 90th percentile
+~430, max 549. Then I simulated the packer at several targets:
+
+| Target | Chunks | Documents split | Avg | Shortest | Longest |
+|---|---|---|---|---|---|
+| 300 | 125 | 35 | 231 | 117 | 366 |
+| 350 | 111 | 23 | 257 | 118 | 419 |
+| **400** | **98** | **10** | **287** | **123** | **419** |
+| 450 | 91 | 3 | 307 | 159 | 430 |
+| 600 | 88 | 0 | 317 | 178 | 549 |
+
+400 sits just under the multi-topic posts, so the 10 documents carrying more
+than one topic come apart and the other 78 stay whole. Those 10 are exactly the
+ones I'd have picked by hand: five `housing_*` overviews and four `course_*`
+overviews, plus `dining_the_atrium.txt`. 450 caught only 3 — barely a change
+from the starter. 300 split 35 documents, which starts breaking up posts whose
+paragraphs genuinely belong together.
+
+**The runt guard.** Packing can leave a short tail at the end of a document.
+`_pack` folds any trailing body under 100 characters back into the piece before
+it, going slightly over budget rather than shipping a fragment. This is the
+same failure the brief points at in `advice_threads`, where the starter's
+800/120 window produces a 2-character chunk. My chunker's shortest chunk on
+`advice_threads` is 157 characters; on campus_life it's 123.
+
+**After the change:**
+
+```
+chunked  98 chunks, 287 characters on average (shortest 123, longest 419),
+         produced by chunker.py::split_documents
+```
+
+All five questions in `questions.py` still retrieve their correct source
+document at rank 1, at distances from 0.21 to 0.41.
 
 ## Sample Chunks
 
-<!-- Five chunks, pasted as text. Label each one and name the file it came from
-     AND the function that produced it — the grader checks your code against
-     what you claim here.
+From `python app.py chunks -n 5` — 98 chunks total, 5 spread across the corpus.
 
-     `python app.py chunks -n 5` prints all three for you. Copy them straight
-     across.
-
-     Milestone 3. -->
-
-**Chunk 1** — source: `` — produced by: ``
+**Chunk 1** — source: `admin_add_drop_deadline.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+On the add/drop deadline
+
+You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
 ```
 
-**Chunk 2** — source: `` — produced by: ``
+Stands on its own. One document, one topic, under the limit — left whole.
+
+**Chunk 2** — source: `course_biol_160_workload.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+Workload for BIOL 160 Cell Biology
+
+People keep asking so: 9 to 11 hours a week, the heaviest first-year course by reputation. That's real time, not optimistic time.
+
+It's front-loaded — the first month is heavier than the rest, partly because you're learning the format.
 ```
 
-**Chunk 3** — source: `` — produced by: ``
+Both paragraphs are about workload, so packing them together is right: the
+hours figure and the "front-loaded" caveat answer one question between them.
+
+**Chunk 3** — source: `course_math_220.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+MATH 220 Linear Algebra
+
+I lived here my sophomore year. Format is chalk-and-talk lecture, weekly problem sets marked for correctness. Assessment: two midterms and a cumulative final. Curved to a b- median.
+
+Expect 6 to 8 hours a week, almost all of it on problem sets.
+
+The one piece of advice: the problem sets are the course; the lectures make sense afterwards rather than during.
 ```
 
-**Chunk 4** — source: `` — produced by: ``
+This is the one I'd split first if I tightened the size — format, workload and
+advice are three separately answerable things in one chunk. It stays whole only
+because the document is 383 characters, just under the 400 budget. A student
+asking "how many hours a week is MATH 220?" gets the answer wrapped in two
+topics they didn't ask about. That's the cost of the threshold I picked, and
+`course_math_220_workload.txt` exists separately and covers it more tightly.
+
+(Also: "I lived here my sophomore year" is in a *course* document. That's a
+copy-paste artifact in the corpus itself, not something my chunker did — a
+loading-stage observation to come back to.)
+
+**Chunk 4** — source: `dining_the_atrium.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+The Atrium
+
+Hours are 8:00am to 6:00pm weekdays. Costs one meal swipe for a sandwich-plus-drink combination, or à la carte.
 ```
 
-**Chunk 5** — source: `` — produced by: ``
+This is the case the title prefix exists for. The body alone is "Hours are
+8:00am to 6:00pm weekdays" — hours for *what*? Unanswerable, and it would match
+every opening-hours question in the corpus. With the title attached it answers
+one question exactly.
+
+**Chunk 5** — source: `housing_innisfree_hall.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+Innisfree Hall — what it's actually like
+
+Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building is L-shaped and the short wing is much quieter.
 ```
+
+The multi-topic split working. Under the starter this was buried in a
+516-character chunk with the building's construction date, its good point and
+its bad point. On its own, with the hall named, it answers a laundry question
+and a noise question. It's the one chunk of the five I'd still call slightly
+too big — laundry and noise are two topics — but the corpus has dedicated
+`housing_innisfree_hall_laundry.txt` and `_noise.txt` files that cover both in
+more depth, so splitting this further would mostly duplicate them.
 
 ## Sample Answer
 

@@ -20,15 +20,26 @@ load_dotenv(ROOT / ".env")
 # Change this to switch corpora, or pass --corpus on the command line.
 # Options are the folder names inside corpora/. See corpora/README.md.
 
-CORPUS = os.getenv("AI201_CORPUS", "city_guides")
+CORPUS = os.getenv("AI201_CORPUS", "campus_life")
 
 
 # ─── Chunking (Milestone 3) ──────────────────────────────────────────────────
-# These are deliberately plain, generic numbers. Milestone 3 is where you
-# replace them with numbers that fit the documents you actually read.
+# Tuned for campus_life: 88 short posts, 178–549 characters, median 309.
+# Every post opens with a one-line title and runs 2–5 short paragraphs.
+#
+# 400 is set just under the length of the multi-topic overview posts, so those
+# 10 come apart at a paragraph boundary while the other 78 stay whole. See
+# chunker.py::split_documents for why, and the README for the measurements.
 
-CHUNK_SIZE = 800  # characters per chunk
-CHUNK_OVERLAP = 120  # characters shared between neighbouring chunks
+CHUNK_SIZE = 400  # characters per chunk, title line included
+
+# Zero on purpose. Cutting on paragraph boundaries means no chunk ever starts
+# mid-thought, so there is nothing for a character overlap to repair. The job
+# overlap used to do — carrying context across the cut — is done instead by
+# repeating the document's title line at the top of every chunk, which costs
+# ~26 characters rather than 120 and carries the part that actually matters:
+# which hall, dining hall or course this is about.
+CHUNK_OVERLAP = 0  # characters shared between neighbouring chunks
 
 
 # ─── Retrieval (Milestone 4) ─────────────────────────────────────────────────

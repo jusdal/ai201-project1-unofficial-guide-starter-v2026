@@ -22,6 +22,7 @@ to it, write down what you saw, and move on. That's a real observation about
 your pipeline, not giving up.
 """
 
+import re
 from dataclasses import dataclass
 
 import config
@@ -80,24 +81,145 @@ def fallback_split(
     return chunks
 
 
+# A body shorter than this is a fragment, not a chunk. When packing leaves a
+# runt at the end of a document — the "2-character chunk" problem the brief
+# warns about — it gets folded back into the piece before it instead.
+MIN_BODY_CHARS = 100
+
+# A first paragraph this short, on a single line, is a title rather than
+# content. Every campus_life post has one: "The Atrium", "On-campus work",
+# "Old Brewhouse — what it's actually like".
+MAX_TITLE_CHARS = 100
+
+# Sentence boundary: ., ! or ? followed by whitespace. Only used for the rare
+# paragraph that is too long to fit a chunk on its own.
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+
+
+def _split_title(text: str) -> tuple[str, list[str]]:
+    """Separate a document's title line from its body paragraphs.
+
+    Returns ("", paragraphs) when the first paragraph doesn't look like a
+    title, so the packing below works either way.
+    """
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    if not paragraphs:
+        return "", []
+
+    first = paragraphs[0]
+    is_title = "\n" not in first and len(first) <= MAX_TITLE_CHARS
+    if is_title and len(paragraphs) > 1:
+        return first, paragraphs[1:]
+    return "", paragraphs
+
+
+def _split_long_paragraph(paragraph: str, budget: int) -> list[str]:
+    """Break one over-long paragraph on sentence boundaries.
+
+    campus_life never needs this — its longest paragraph fits. It's here so a
+    single runaway paragraph degrades into whole sentences rather than being
+    cut mid-word, which is what the starter did everywhere.
+    """
+    sentences = [s.strip() for s in _SENTENCE_END.split(paragraph) if s.strip()]
+    pieces: list[str] = []
+    current = ""
+    for sentence in sentences:
+        candidate = f"{current} {sentence}".strip()
+        if current and len(candidate) > budget:
+            pieces.append(current)
+            current = sentence
+        else:
+            current = candidate
+    if current:
+        pieces.append(current)
+    return pieces or [paragraph]
+
+
+def _pack(paragraphs: list[str], budget: int) -> list[str]:
+    """Group whole paragraphs into bodies of at most `budget` characters."""
+    bodies: list[str] = []
+    current: list[str] = []
+    current_len = 0
+
+    for paragraph in paragraphs:
+        for piece in (
+            _split_long_paragraph(paragraph, budget)
+            if len(paragraph) > budget
+            else [paragraph]
+        ):
+            addition = len(piece) + (2 if current else 0)
+            if current and current_len + addition > budget:
+                bodies.append("\n\n".join(current))
+                current, current_len = [piece], len(piece)
+            else:
+                current.append(piece)
+                current_len += addition
+
+    if current:
+        bodies.append("\n\n".join(current))
+
+    # Fold a trailing runt back into its neighbour rather than shipping a
+    # fragment. Going a little over budget beats a chunk nobody can answer from.
+    if len(bodies) > 1 and len(bodies[-1]) < MIN_BODY_CHARS:
+        tail = bodies.pop()
+        bodies[-1] = f"{bodies[-1]}\n\n{tail}"
+
+    return bodies
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Split documents on paragraph boundaries, keeping the title line on every
+    chunk.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
+    Why this and not fixed-size windows, for campus_life:
 
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
+    The starter cut at 800 characters and the longest post here is 549, so it
+    never cut anything — 88 documents, 88 chunks. That was mostly the right
+    call. These posts are already topic-scoped by whoever wrote the corpus:
+    housing_aldridge_hall_laundry.txt and housing_aldridge_hall_noise.txt are
+    separate files. Most of the chunking was done for me in the filenames.
 
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    Two things were still wrong with it.
+
+    First, the "what it's actually like" housing overviews genuinely hold
+    several topics at once — the building, the good, the bad, and a last
+    paragraph that packs laundry prices and noise together. Those are the posts
+    a laundry question has to dig the answer out of, competing with 300
+    characters about elevators and heating. Those should come apart.
+
+    Second — and this is why splitting on paragraphs alone would have been
+    worse than doing nothing — every post's first paragraph is its title, a
+    median of 26 characters. A plain `\\n\\n` split yields 88 chunks that say
+    only "The Atrium" or "On-campus work": the fragment failure mode, 88 times
+    over. Worse, it orphans the bodies. "Laundry costs $1.75 wash, $1.75 dry,
+    app-based" never names a building; only the title line does. Cut loose, it
+    matches every laundry question equally and answers none of them.
+
+    So: cut on paragraph boundaries, pack up to CHUNK_SIZE, and prepend the
+    title to every piece. At 400 characters that leaves 78 posts whole and
+    splits the 10 that are actually carrying more than one topic: 98 chunks,
+    shortest 123 characters, longest 419.
     """
-    return fallback_split(documents)
+    chunk_size = config.CHUNK_SIZE
+    chunks: list[Chunk] = []
+
+    for doc in documents:
+        title, paragraphs = _split_title(doc.text)
+        prefix = f"{title}\n\n" if title else ""
+        budget = max(chunk_size - len(prefix), MIN_BODY_CHARS)
+
+        for index, body in enumerate(_pack(paragraphs, budget)):
+            chunks.append(
+                Chunk(
+                    text=f"{prefix}{body}",
+                    source=doc.source,
+                    index=index,
+                    produced_by="chunker.py::split_documents",
+                )
+            )
+
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
