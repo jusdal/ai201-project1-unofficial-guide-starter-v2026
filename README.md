@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+Justin Daly — corpus: `campus_life`
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -21,11 +21,17 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+This is a retrieval-augmented question answering system over `campus_life`: 88
+short posts from a student forum at a fictional university, covering housing,
+courses, dining, registrar admin, transit, and money. You ask it the kind of
+factual question a student actually asks another student — what laundry costs
+in a specific hall, how often the weekend shuttle runs, how many hours a week
+you're allowed to work on campus, which study rooms have whiteboards that
+erase — and it retrieves the posts most likely to hold the answer, answers from
+those posts alone, and names the files it drew on. Questions the corpus doesn't
+cover never reach the model: a relevance gate compares the best retrieved
+distance against a cutoff of 0.75 and returns "I don't have enough information
+about that" instead of guessing. Those 88 files are the only thing it knows.
 
 ## Chunking Strategy
 
@@ -247,18 +253,61 @@ spare, which is what criterion 3 measures.
 
 ## How I Used AI
 
-<!-- Two specific moments. For each: what you asked for, what came back, and
-     what you changed about it.
+**1. I asked for a second pair of eyes on my criteria and got a draft about the
+wrong corpus.**
 
-     "I asked Claude to write the chunking function from my notes. It ignored
-     the overlap, so I added that myself" is the level of detail we're after.
-     "I used AI to help me code" is not.
+In Milestone 2 I had criteria 1–3 written and wanted help sharpening 4 and 5, so
+I asked Claude what it would propose. What came back was specific, grounded in
+real documents, and about a corpus I wasn't using: criterion 4 was "numbers stay
+attached to their place," justified by walking routes and transport timetables.
+It had read `CORPUS = "city_guides"` out of `config.py` — a default I'd flipped
+days earlier while looking through the other corpora and forgotten about — and
+never asked which corpus I was working in. It also told me, confidently, that my
+`questions.py` was full of questions about buildings that don't exist. They do
+exist. I was the only thing in the repo that knew it.
 
-     Milestone 5. -->
+I threw both drafts out, told it the corpus was `campus_life`, and had it go
+read the files before suggesting anything else. The one thing worth keeping from
+the second pass was an observation, not a criterion: the seven `housing_*`
+laundry posts are near-identical templates differing only by a hall name and a
+price. But its rewrite was still built around embedding-discrimination failures,
+which is a sophisticated thing to measure and not something I could score by
+looking. I told it I wanted simpler criteria I could check by eye, asked for
+plain options instead of finished text, and wrote 4 and 5 myself from there —
+the 150–600 character bound, and the no-invented-entities check against the 88
+filenames.
 
-**1.**
+The fix that mattered wasn't a better prompt, though. It was setting `config.py`
+back to `campus_life`, because the same thing happened again at the start of
+Milestone 3: it read the config, and by the time I interrupted it, it was
+designing a chunker that split on markdown `##` headers, which `campus_life`
+doesn't have. What it believes about my project comes from my files. A stale
+file is a lie I'm telling it, and it has no way to catch me.
 
-**2.**
+**2. I made it interrogate my criteria instead of writing them.**
+
+My first try at the "why this target" reasons was to ask Claude to draft them.
+Each one came back at four or five sentences citing distances and character
+counts — reasons that could only have been written after running the pipeline.
+That's backwards for this assignment. The point of writing criteria in unit 1 is
+that they're a bet placed before the results are in, so I told it the reasons
+were too detailed and rewrote each one to a sentence or two I could have
+defended on day one. Criterion 1's reason is now just that the work-hours answer
+isn't duplicated anywhere else in the corpus and shares the phrase "hours a
+week" with nine course-workload docs that could outrank it — something I knew
+from reading files in Milestone 1, not from a run.
+
+So I stopped asking it for text. I gave it the five criteria I had and three
+questions to answer about each — how would you test this using only the sentence
+itself, would two different people score it the same way, what would have to
+happen for it to fail — and added "don't rewrite them for me," because otherwise
+it quietly fixes things instead of telling me they're broken. Four held up. By
+its own answer, criterion 5 didn't: two people wouldn't have scored my original
+wording the same way. I asked it to lay out ways the sentence could be rewritten
+and picked the one I could check without an opinion — the system never names a
+hall, course, or dining hall outside the 88 filenames in
+`corpora/campus_life/documents/`. Reading three options I didn't write was what
+made it obvious which one was actually checkable.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
