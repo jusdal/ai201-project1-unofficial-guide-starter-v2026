@@ -63,14 +63,14 @@ them rather than from the summary line:
 
 1. The seven `housing_*` "what it's actually like" posts really do hold several
    topics at once. Old Brewhouse (549 characters) runs: the building, then "the
-   good", then "the bad", then a last paragraph that packs laundry prices *and*
+   good", then "the bad", then a last paragraph that packs laundry prices _and_
    noise together. As one 549-character chunk, a laundry question has to find
    "$1.50 wash, $1.50 dry" underneath 300 characters about 1902 brickwork and
    uneven heating. Those are the posts that should come apart.
 
 2. **Every single post opens with a one-line title**, median 26 characters —
    "The Atrium", "On-campus work", "Old Brewhouse — what it's actually like".
-   All 88 of them. This is why I did *not* just split on `\n\n`, which was my
+   All 88 of them. This is why I did _not_ just split on `\n\n`, which was my
    first instinct and would have been worse than leaving the starter alone. It
    produces 271 chunks, 88 of which are nothing but a title — the fragment
    failure mode, 88 times over. Worse, it orphans the bodies: "Laundry costs
@@ -88,13 +88,13 @@ tail.
 **Why 400.** I measured the document lengths first: median 309, 90th percentile
 ~430, max 549. Then I simulated the packer at several targets:
 
-| Target | Chunks | Documents split | Avg | Shortest | Longest |
-|---|---|---|---|---|---|
-| 300 | 125 | 35 | 231 | 117 | 366 |
-| 350 | 111 | 23 | 257 | 118 | 419 |
-| **400** | **98** | **10** | **287** | **123** | **419** |
-| 450 | 91 | 3 | 307 | 159 | 430 |
-| 600 | 88 | 0 | 317 | 178 | 549 |
+| Target  | Chunks | Documents split | Avg     | Shortest | Longest |
+| ------- | ------ | --------------- | ------- | -------- | ------- |
+| 300     | 125    | 35              | 231     | 117      | 366     |
+| 350     | 111    | 23              | 257     | 118      | 419     |
+| **400** | **98** | **10**          | **287** | **123**  | **419** |
+| 450     | 91     | 3               | 307     | 159      | 430     |
+| 600     | 88     | 0               | 317     | 178      | 549     |
 
 400 sits just under the multi-topic posts, so the 10 documents carrying more
 than one topic come apart and the other 78 stay whole. Those 10 are exactly the
@@ -166,7 +166,7 @@ asking "how many hours a week is MATH 220?" gets the answer wrapped in two
 topics they didn't ask about. That's the cost of the threshold I picked, and
 `course_math_220_workload.txt` exists separately and covers it more tightly.
 
-(Also: "I lived here my sophomore year" is in a *course* document. That's a
+(Also: "I lived here my sophomore year" is in a _course_ document. That's a
 copy-paste artifact in the corpus itself, not something my chunker did — a
 loading-stage observation to come back to.)
 
@@ -179,7 +179,7 @@ Hours are 8:00am to 6:00pm weekdays. Costs one meal swipe for a sandwich-plus-dr
 ```
 
 This is the case the title prefix exists for. The body alone is "Hours are
-8:00am to 6:00pm weekdays" — hours for *what*? Unanswerable, and it would match
+8:00am to 6:00pm weekdays" — hours for _what_? Unanswerable, and it would match
 every opening-hours question in the corpus. With the title attached it answers
 one question exactly.
 
@@ -218,7 +218,7 @@ housing_innisfree_hall.txt, housing_innisfree_hall_laundry.txt,
 housing_old_brewhouse.txt
 ```
 
-Worth noting what the prompt contained: four *different* halls' laundry prices,
+Worth noting what the prompt contained: four _different_ halls' laundry prices,
 three of them wrong for this question. Innisfree charges $1.75/$1.75 and Old
 Brewhouse $1.50/$1.50. The answer takes Aldridge's numbers and names both files
 that carry them — I checked, and the prices really are in both.
@@ -238,18 +238,18 @@ So the band with nothing real in it is 0.6663–0.8246, and I put the cutoff at
 its midpoint. That still refuses all five `OUT_OF_SCOPE` questions with 0.075 to
 spare, which is what criterion 3 measures.
 
-| Question | In corpus? | Best distance |
-|---|---|---|
-| How much does it cost to do laundry at Aldridge Hall? | yes | 0.2133 |
-| Approximately how many pages of reading per week should a student expect in HIST 118 Modern World History? | yes | 0.2374 |
-| Which specific group study room numbers have whiteboards that actually erase? | yes | 0.3883 |
-| What is the maximum number of hours a student can work on campus per week during the term? | yes | 0.3901 |
-| How often does the campus shuttle run on weekends? | yes | 0.4114 |
-| What is the capital of Mongolia? | no | 0.8246 |
-| What is the recommended dosage of ibuprofen for a headache? | no | 0.8442 |
-| Who won the 1994 World Cup? | no | 0.8859 |
-| How do I write a for loop in Rust? | no | 0.8907 |
-| How do I change the oil in a diesel engine? | no | 0.9335 |
+| Question                                                                                                   | In corpus? | Best distance |
+| ---------------------------------------------------------------------------------------------------------- | ---------- | ------------- |
+| How much does it cost to do laundry at Aldridge Hall?                                                      | yes        | 0.2133        |
+| Approximately how many pages of reading per week should a student expect in HIST 118 Modern World History? | yes        | 0.2374        |
+| Which specific group study room numbers have whiteboards that actually erase?                              | yes        | 0.3883        |
+| What is the maximum number of hours a student can work on campus per week during the term?                 | yes        | 0.3901        |
+| How often does the campus shuttle run on weekends?                                                         | yes        | 0.4114        |
+| What is the capital of Mongolia?                                                                           | no         | 0.8246        |
+| What is the recommended dosage of ibuprofen for a headache?                                                | no         | 0.8442        |
+| Who won the 1994 World Cup?                                                                                | no         | 0.8859        |
+| How do I write a for loop in Rust?                                                                         | no         | 0.8907        |
+| How do I change the oil in a diesel engine?                                                                | no         | 0.9335        |
 
 ## How I Used AI
 
@@ -334,17 +334,89 @@ made it obvious which one was actually checkable.
 
      Milestone 1. -->
 
-| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
-|---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| Criterion                              | Target | Run 1 | Run 2 | Run 3 | Verdict |
+| -------------------------------------- | ------ | ----- | ----- | ----- | ------- |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 2/5   | 2/5   | 2/5   | MISSED  |
+| 2. Every answer names a source         | 5 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 3. Gate stops out-of-corpus questions  | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 4. No chunk is under 150 or over 600   | 0 outside range | 4/98 outside | 4/98 outside | 4/98 outside | MISSED |
+| 5. No hallucinated entities            | 5 of 5 | 5/5   | 5/5   | 5/5   | MET     |
 
-<!-- Underneath, paste the REAL output for each criterion from one of your
-     runs — the actual text your system produced, not a description of it.
-     Name the file and function that produced it. -->
+### Real output, by criterion
+
+From `results/run_2026-09-23_1813_before.md`, plus retrieved-chunk text pulled
+directly with `store.py::search` (the run log only stores source filenames per
+question, not the chunk text itself).
+
+**1. Retrieved chunk contains the answer** — produced by `store.py::search`.
+
+Top chunk for "How often does the campus shuttle run on weekends?" (distance 0.4114):
+
+```
+The campus shuttle
+
+Runs a loop every 20 minutes from 7am to 11pm on weekdays and every 40 minutes on weekends. The published timetable is optimistic by about five minutes in the morning and accurate the rest of the day.
+
+It's free with a student ID. The stop outside Fenwick Court is the one that gets skipped when the driver is behind, which is worth knowing if you live there.
+```
+
+Top chunk for "How much does it cost to do laundry at Aldridge Hall?" (distance 0.2133) — scored `fail` above because the wording doesn't match `expects` ("wash: $1.75; dry: $1.50") verbatim, but the chunk itself has the answer:
+
+```
+Laundry in Aldridge Hall
+
+Machines take $1.75 wash, $1.50 dry, card only. There are eight washers and six dryers for the building, which is the wrong ratio and means the dryers back up on Sunday evenings.
+
+Best time to do laundry here is Tuesday or Wednesday morning. Sunday after 6pm you will wait.
+```
+
+**2. Every answer names a source** — produced by `generate.py::answer_from_chunks`.
+
+```
+Laundry at Aldridge Hall costs $1.75 to wash and $1.50 to dry.
+
+This information comes from `housing_aldridge_hall.txt` and
+`housing_aldridge_hall_laundry.txt`.
+```
+
+**3. Gate stops out-of-corpus questions** — produced by `gate.py::check`, run over all five via `run_eval.py::check_out_of_scope`.
+
+```
+| Out-of-scope question | Best distance | Gate |
+|---|---|---|
+| What is the capital of Mongolia? | 0.825 | refused |
+| How do I change the oil in a diesel engine? | 0.934 | refused |
+| Who won the 1994 World Cup? | 0.886 | refused |
+| What is the recommended dosage of ibuprofen for a headache? | 0.844 | refused |
+| How do I write a for loop in Rust? | 0.891 | refused |
+```
+
+**4. No chunk is under 150 or over 600** — produced by `chunker.py::split_documents`.
+
+```
+98 chunks, 287 characters on average (shortest 123, longest 419), produced by chunker.py::split_documents
+```
+
+The four chunks actually outside the range (all under 150, none over 600):
+
+```
+course_cs_210.txt#1 (125 chars)
+course_cs_340.txt#1 (131 chars)
+course_stat_150.txt#1 (133 chars)
+dining_the_atrium.txt#1 (123 chars)
+```
+
+**5. No hallucinated entities** — produced by `generate.py::answer_from_chunks`.
+
+```
+Rooms 210 and 211 have whiteboards that actually erase (study_group_rooms.txt).
+```
+
+```
+A student in HIST 118 Modern World History should expect about 120 pages of reading per week (from `course_hist_118.txt` and `course_hist_118_workload.txt`).
+```
+
+Every entity named across all 15 answers in this run — Aldridge Hall, rooms 210/211, HIST 118 — is real; checked against the 88 filenames in `corpora/campus_life/documents/`.
 
 ## Verdicts
 
@@ -357,13 +429,13 @@ made it obvious which one was actually checkable.
 
      Milestone 2. -->
 
-| # | Criterion | Verdict | How I decided |
-|---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| #   | Criterion                              | Verdict | How I decided |
+| --- | --------------------------------------- | ------- | ------------- |
+| 1   | Retrieved chunk contains the answer     | MISSED  | Target was 4 of 5; the scorer says 2 of 5 in all three runs, and that number has to hold rather than get read around. Worth noting for the diagnosis: I checked the actual retrieved chunks by hand and the answer is present in all five — `scorer.py::judge` matches the generated answer's exact wording against `expects`, not the chunk contents, so a correct paraphrase ("20 hours a week" vs. `expects`'s "20 hours per week") scores as a miss. That's a measurement problem, not a retrieval problem, but I'm calling the number as measured. |
+| 2   | Every answer names a source             | MET     | 5 of 5 in all three runs, target was 5 of 5. Not close either way. |
+| 3   | Gate stops out-of-corpus questions      | MET     | 5 of 5 against a target of 4 of 5, and it's a deterministic pass, so the same result holds every time I check it. |
+| 4   | No chunk under 150 or over 600          | MISSED  | Running `chunker.py::split_documents` over the full corpus gives 4 of 98 chunks under 150 characters (none over 600) — every one of them a document whose only chunk is a short title plus a one-line "one piece of advice" paragraph, with nothing to fold into. The target was zero, so this misses even though it's 94 of 98 chunks, or 96%. |
+| 5   | No hallucinated entities                | MET     | I read every generated answer across all three "before" runs — 45 answers total — and listed every hall, course, or dining hall name each one used. Every name it ever used (Aldridge Hall, HIST 118, study rooms 210/211) is in the 88 real filenames. Zero hallucinations, 5 of 5. |
 
 ## Diagnoses
 
@@ -399,13 +471,13 @@ made it obvious which one was actually checkable.
 <!-- Same format, same five criteria, three runs each.
      `python run_eval.py --label after` -->
 
-| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
-|---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| Criterion                              | Target | Run 1 | Run 2 | Run 3 | Verdict |
+| -------------------------------------- | ------ | ----- | ----- | ----- | ------- |
+| 1. Retrieved chunk contains the answer | 4 of 5 |       |       |       |         |
+| 2. Every answer names a source         | 5 of 5 |       |       |       |         |
+| 3. Gate stops out-of-corpus questions  | 4 of 5 |       |       |       |         |
+| 4.                                     |        |       |       |       |         |
+| 5.                                     |        |       |       |       |         |
 
 **Did it help?**
 
