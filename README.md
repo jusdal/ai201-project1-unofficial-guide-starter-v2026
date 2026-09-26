@@ -439,23 +439,54 @@ Every entity named across all 15 answers in this run — Aldridge Hall, rooms 21
 
 ## Diagnoses
 
-<!-- For each miss: which stage caused it, and how. The stage alone isn't
-     enough — you need the mechanism.
+**Criterion 1 — Retrieved chunk contains the answer (MISSED, 2/5).**
 
-     Not a diagnosis: "Question 3 didn't work."
-     A diagnosis:     "Question 3 asks about laundry costs. The answer is in
-                       one sentence that got split across two chunks, so
-                       neither chunk on its own contains it."
+Stage: none of the five — this isn't a pipeline failure. For all three
+failing questions (laundry at Aldridge Hall, the work-hours cap, HIST 118's
+reading load), the top-ranked chunk contained the answer and the generated
+answer stated it correctly — just phrased differently than the literal
+`expects` string I wrote in Milestone 2:
 
-     The five stages: loading → chunking → embedding → retrieval → generation.
+| Question | `expects` | What the chunk/answer actually said |
+|---|---|---|
+| Aldridge laundry | `wash: $1.75; dry: $1.50` | "$1.75 wash, $1.50 dry" / "$1.75 to wash and $1.50 to dry" |
+| Work-hours cap | `20 hours per week` | "Maximum is 20 hours a week" / "is 20 hours" |
+| HIST 118 reading | `about 120 pages per week` | "about 120 pages a week" / "about 120 pages of reading per week" |
 
-     Look for a pattern. If three misses all ask about numbers, that's one
-     problem, not three.
+The mechanism is `scorer.py::judge`, which checks
+`expects.strip().lower() in (answer or "").lower()` — an exact substring
+match against a template written before I'd seen any output. Retrieval and
+generation both did their job; the check doesn't recognize a correct
+paraphrase. Per the TAs, I'm not revising `judge()` or `expects` to fix this,
+so the number stands as measured — this diagnosis is the record of why.
 
-     Missed nothing? Say so, then say honestly whether your targets were set
-     low, and which one you'd tighten and to what.
+**Criterion 4 — No chunk under 150 or over 600 (MISSED, 4 of 98 chunks).**
 
-     Milestone 3. -->
+Stage: chunking, in `chunker.py::_pack`. Four documents
+(`course_cs_210.txt`, `course_cs_340.txt`, `course_stat_150.txt`,
+`dining_the_atrium.txt`) each split into two chunks — a long overview and a
+short "one piece of advice" tag-on paragraph. The runt guard
+(`MIN_BODY_CHARS = 100`) is supposed to fold a short trailing chunk into the
+one before it, but it checks the body length *before* the title gets
+prepended back onto the chunk. Three of the four bodies (97, 106, 113
+characters) sit at or above that 100-character floor, so the fold never
+fires; the title (16–27 characters) then gets added on top, and the result
+still lands under the criterion's 150-character floor:
+
+```
+course_cs_210.txt#1:    125 chars total (100 body + 25 title) — guard needs body < 100
+course_cs_340.txt#1:    131 chars total (113 body + 18 title)
+course_stat_150.txt#1:  133 chars total (106 body + 27 title)
+dining_the_atrium.txt#1: 123 chars total (97 body + 26 title)
+```
+
+The guard is measuring the wrong quantity — body length alone — against a
+criterion that's about the whole chunk, title included. This is a real
+chunking bug, not a criterion that doesn't apply to this corpus.
+
+**Pattern.** These two misses don't share a cause. Criterion 1's is a
+scoring-tool limitation that never touches the pipeline; criterion 4's is a
+genuine chunking-stage bug. Two separate problems, not one.
 
 ## The Improvement
 
