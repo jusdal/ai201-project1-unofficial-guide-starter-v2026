@@ -309,6 +309,31 @@ hall, course, or dining hall outside the 88 filenames in
 `corpora/campus_life/documents/`. Reading three options I didn't write was what
 made it obvious which one was actually checkable.
 
+**3. Unit 2: I had it pull the actual chunks instead of trusting the summary
+`run_eval.py` writes.**
+
+`run_eval.py`'s transcript logs source _filenames_ per question, not the
+chunk text — so when I went to score criterion 1 by eye, there was nothing
+to actually read. I had Claude call `store.py::search` directly and print
+the raw retrieved text for each question. That's what showed criterion 1
+wasn't a retrieval problem at all: the answer was sitting in the top chunk
+for all three questions the scorer marked `fail`, phrased differently than
+my `expects` string. Same move for criterion 4 — `chunker.py`'s own
+`describe()` only prints the shortest/longest length, not which chunks
+those are, so I had it filter the real chunk list to name the four
+offenders before I could diagnose anything.
+
+**4. I told it to stop asking permission and just write the verdicts —
+but it still argued with me once.**
+
+In Milestone 3, I told it criterion 4 "wasn't relevant" — my actual reason was that I'd missed the number and didn't want to deal with it — and instead of just
+writing that down, it pulled the real body/title-length numbers for the
+four chunks and pushed back: the criterion's own "why this target" says a
+chunk outside range means something broke, and something specific had.
+That's the reason the diagnosis in this README is an actual chunking bug
+instead of a criterion I quietly lowered because I didn't like 4 of 98 —
+letting it write things for me stopped meaning letting it agree with me.
+
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
@@ -334,13 +359,13 @@ made it obvious which one was actually checkable.
 
      Milestone 1. -->
 
-| Criterion                              | Target | Run 1 | Run 2 | Run 3 | Verdict |
-| -------------------------------------- | ------ | ----- | ----- | ----- | ------- |
-| 1. Retrieved chunk contains the answer | 4 of 5 | 2/5   | 2/5   | 2/5   | MISSED  |
-| 2. Every answer names a source         | 5 of 5 | 5/5   | 5/5   | 5/5   | MET     |
-| 3. Gate stops out-of-corpus questions  | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
-| 4. No chunk is under 150 or over 600   | 0 outside range | 4/98 outside | 4/98 outside | 4/98 outside | MISSED |
-| 5. No hallucinated entities            | 5 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| Criterion                              | Target          | Run 1        | Run 2        | Run 3        | Verdict |
+| -------------------------------------- | --------------- | ------------ | ------------ | ------------ | ------- |
+| 1. Retrieved chunk contains the answer | 4 of 5          | 2/5          | 2/5          | 2/5          | MISSED  |
+| 2. Every answer names a source         | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
+| 3. Gate stops out-of-corpus questions  | 4 of 5          | 5/5          | 5/5          | 5/5          | MET     |
+| 4. No chunk is under 150 or over 600   | 0 outside range | 4/98 outside | 4/98 outside | 4/98 outside | MISSED  |
+| 5. No hallucinated entities            | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
 
 ### Real output, by criterion
 
@@ -429,36 +454,41 @@ Every entity named across all 15 answers in this run — Aldridge Hall, rooms 21
 
      Milestone 2. -->
 
-| #   | Criterion                              | Verdict | How I decided |
-| --- | --------------------------------------- | ------- | ------------- |
-| 1   | Retrieved chunk contains the answer     | MISSED  | Target was 4 of 5; the scorer says 2 of 5 in all three runs, and that number has to hold rather than get read around. Worth noting for the diagnosis: I checked the actual retrieved chunks by hand and the answer is present in all five — `scorer.py::judge` matches the generated answer's exact wording against `expects`, not the chunk contents, so a correct paraphrase ("20 hours a week" vs. `expects`'s "20 hours per week") scores as a miss. That's a measurement problem, not a retrieval problem, but I'm calling the number as measured. |
-| 2   | Every answer names a source             | MET     | 5 of 5 in all three runs, target was 5 of 5. Not close either way. |
-| 3   | Gate stops out-of-corpus questions      | MET     | 5 of 5 against a target of 4 of 5, and it's a deterministic pass, so the same result holds every time I check it. |
-| 4   | No chunk under 150 or over 600          | MISSED  | Running `chunker.py::split_documents` over the full corpus gives 4 of 98 chunks under 150 characters (none over 600) — every one of them a document whose only chunk is a short title plus a one-line "one piece of advice" paragraph, with nothing to fold into. The target was zero, so this misses even though it's 94 of 98 chunks, or 96%. |
-| 5   | No hallucinated entities                | MET     | I read every generated answer across all three "before" runs — 45 answers total — and listed every hall, course, or dining hall name each one used. Every name it ever used (Aldridge Hall, HIST 118, study rooms 210/211) is in the 88 real filenames. Zero hallucinations, 5 of 5. |
+| #   | Criterion                           | Verdict | How I decided                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --- | ----------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Retrieved chunk contains the answer | MISSED  | Target was 4 of 5; the scorer says 2 of 5 in all three runs, and that number has to hold rather than get read around. Worth noting for the diagnosis: I checked the actual retrieved chunks by hand and the answer is present in all five — `scorer.py::judge` matches the generated answer's exact wording against `expects`, not the chunk contents, so a correct paraphrase ("20 hours a week" vs. `expects`'s "20 hours per week") scores as a miss. That's a measurement problem, not a retrieval problem, but I'm calling the number as measured. |
+| 2   | Every answer names a source         | MET     | 5 of 5 in all three runs, target was 5 of 5. Not close either way.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 3   | Gate stops out-of-corpus questions  | MET     | 5 of 5 against a target of 4 of 5, and it's a deterministic pass, so the same result holds every time I check it.                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 4   | No chunk under 150 or over 600      | MISSED  | Running `chunker.py::split_documents` over the full corpus gives 4 of 98 chunks under 150 characters (none over 600) — every one of them a document whose only chunk is a short title plus a one-line "one piece of advice" paragraph, with nothing to fold into. The target was zero, so this misses even though it's 94 of 98 chunks, or 96%.                                                                                                                                                                                                         |
+| 5   | No hallucinated entities            | MET     | I read every generated answer across all three "before" runs — 45 answers total — and listed every hall, course, or dining hall name each one used. Every name it ever used (Aldridge Hall, HIST 118, study rooms 210/211) is in the 88 real filenames. Zero hallucinations, 5 of 5.                                                                                                                                                                                                                                                                    |
 
 ## Diagnoses
 
 **Criterion 1 — Retrieved chunk contains the answer (MISSED, 2/5).**
 
-Stage: none of the five — this isn't a pipeline failure. For all three
-failing questions (laundry at Aldridge Hall, the work-hours cap, HIST 118's
-reading load), the top-ranked chunk contained the answer and the generated
-answer stated it correctly — just phrased differently than the literal
-`expects` string I wrote in Milestone 2:
+Stage: generation, technically — though generation isn't really at fault.
+For all three failing questions (laundry at Aldridge Hall, the work-hours
+cap, HIST 118's reading load), the top-ranked chunk contained the answer
+and the generated answer stated it correctly. The mismatch that fails these
+three is between that generated answer's phrasing and the literal `expects`
+string I wrote in Milestone 2 — not anything wrong with what the model
+produced:
 
-| Question | `expects` | What the chunk/answer actually said |
-|---|---|---|
-| Aldridge laundry | `wash: $1.75; dry: $1.50` | "$1.75 wash, $1.50 dry" / "$1.75 to wash and $1.50 to dry" |
-| Work-hours cap | `20 hours per week` | "Maximum is 20 hours a week" / "is 20 hours" |
+| Question         | `expects`                  | What the chunk/answer actually said                              |
+| ---------------- | -------------------------- | ---------------------------------------------------------------- |
+| Aldridge laundry | `wash: $1.75; dry: $1.50`  | "$1.75 wash, $1.50 dry" / "$1.75 to wash and $1.50 to dry"       |
+| Work-hours cap   | `20 hours per week`        | "Maximum is 20 hours a week" / "is 20 hours"                     |
 | HIST 118 reading | `about 120 pages per week` | "about 120 pages a week" / "about 120 pages of reading per week" |
 
-The mechanism is `scorer.py::judge`, which checks
-`expects.strip().lower() in (answer or "").lower()` — an exact substring
-match against a template written before I'd seen any output. Retrieval and
-generation both did their job; the check doesn't recognize a correct
-paraphrase. Per the TAs, I'm not revising `judge()` or `expects` to fix this,
-so the number stands as measured — this diagnosis is the record of why.
+The actual mechanism lives one step past generation, in `scorer.py::judge`,
+which checks `expects.strip().lower() in (answer or "").lower()` — an exact
+substring match against a template written before I'd seen any output.
+Retrieval and generation both did their job; the check doesn't recognize a
+correct paraphrase. I'm naming "generation" as the stage because that's
+where the text being checked comes from, but the fix, if there were one,
+wouldn't touch generation — it would touch the check. Per the TAs, I'm not
+revising `judge()` or `expects` to fix this, so the number stands as
+measured — this diagnosis is the record of why.
 
 **Criterion 4 — No chunk under 150 or over 600 (MISSED, 4 of 98 chunks).**
 
@@ -467,7 +497,7 @@ Stage: chunking, in `chunker.py::_pack`. Four documents
 `dining_the_atrium.txt`) each split into two chunks — a long overview and a
 short "one piece of advice" tag-on paragraph. The runt guard
 (`MIN_BODY_CHARS = 100`) is supposed to fold a short trailing chunk into the
-one before it, but it checks the body length *before* the title gets
+one before it, but it checks the body length _before_ the title gets
 prepended back onto the chunk. Three of the four bodies (97, 106, 113
 characters) sit at or above that 100-character floor, so the fold never
 fires; the title (16–27 characters) then gets added on top, and the result
@@ -491,7 +521,7 @@ genuine chunking-stage bug. Two separate problems, not one.
 ## The Improvement
 
 **What I changed:** `chunker.py::_pack`'s runt guard now folds a trailing
-chunk into its neighbor based on the chunk's *total* length — title
+chunk into its neighbor based on the chunk's _total_ length — title
 included — instead of the body alone. It takes a new `prefix_len` argument
 from `split_documents` and compares `prefix_len + len(body)` against a new
 `MIN_CHUNK_CHARS = 150`, instead of comparing the raw body against
@@ -510,13 +540,13 @@ different lever.
 (`python app.py index` after the chunker change): 94 chunks now, down from
 98 — the four short ones folded into their neighbors.
 
-| Criterion                               | Target          | Run 1        | Run 2        | Run 3        | Verdict |
-| ---------------------------------------- | --------------- | ------------ | ------------ | ------------ | ------- |
-| 1. Retrieved chunk contains the answer   | 4 of 5          | 2/5          | 2/5          | 2/5          | MISSED  |
-| 2. Every answer names a source           | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
-| 3. Gate stops out-of-corpus questions    | 4 of 5          | 5/5          | 5/5          | 5/5          | MET     |
-| 4. No chunk under 150 or over 600        | 0 outside range | 0/94 outside | 0/94 outside | 0/94 outside | MET     |
-| 5. No hallucinated entities              | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
+| Criterion                              | Target          | Run 1        | Run 2        | Run 3        | Verdict |
+| -------------------------------------- | --------------- | ------------ | ------------ | ------------ | ------- |
+| 1. Retrieved chunk contains the answer | 4 of 5          | 2/5          | 2/5          | 2/5          | MISSED  |
+| 2. Every answer names a source         | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
+| 3. Gate stops out-of-corpus questions  | 4 of 5          | 5/5          | 5/5          | 5/5          | MET     |
+| 4. No chunk under 150 or over 600      | 0 outside range | 0/94 outside | 0/94 outside | 0/94 outside | MET     |
+| 5. No hallucinated entities            | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
 
 Chunker output after the fix, from `chunker.py::split_documents`:
 
@@ -543,17 +573,43 @@ properly, was the point.
 
 ## What's Still Broken
 
-<!-- For each criterion still missed after your fix: what you'd do about it,
-     and why you stopped where you did.
+**Criterion 1 — Retrieved chunk contains the answer.** Still MISSED, 2 of 5,
+unchanged by the Milestone 4 fix because it was never a chunking problem —
+the diagnosis showed retrieval and generation both already produce the
+right answer for all three failing questions, and `scorer.py::judge` just
+doesn't recognize a correct paraphrase of `expects`.
 
-     "I ran out of time" is fine if it's true. Pretending nothing is left is
-     not.
+What I'd do about it: the only real lever is the criterion's wording, not
+the code. I'm not allowed to touch `scorer.py::judge` or the `expects`
+fields in `questions.py`, so there's no fix available to me inside this
+unit's rules — checking a chunk against a fixed phrase and checking a
+generated answer against that same fixed phrase are both going to have this
+problem as long as the phrase is one exact string in one exact order. A
+real fix would be rewriting the criterion itself, which belongs in a
+revision, not a code change.
 
-     Milestone 5. -->
+Why I stopped here: Milestone 4 asks for one change, connected to the
+diagnosis, and this diagnosis names generation only because that's where
+the checked text comes from — there's nothing actually wrong in loading,
+chunking, embedding, retrieval, or generation to fix, since all five already
+do their job correctly for these three questions. I could make the generated
+answers echo `expects` more
+literally (e.g. force the exact phrase "wash: $1.75; dry: $1.50" into the
+prompt), but that would be tuning the system to satisfy a scorer rather than
+to answer questions better, which is a worse system dressed up as a fixed
+one. I'd rather leave it MISSED and honestly explained than do that.
 
 ## What I'd Do Differently
 
-<!-- Knowing what you know now — which of your five criteria would you write
-     differently, and why?
-
-     Milestone 5. -->
+Criterion 1 is the one I'd write differently next time. "The retrieved
+chunks include one that contains the answer" is the right thing to test,
+but scoring it by comparing a single hand-written `expects` phrase against
+the _generated answer_ — not the chunk — means the criterion is really
+testing whether the model's phrasing happens to match a template I wrote in
+Milestone 2, before I'd seen how naturally it would phrase things. I'd
+either write `expects` as the individual facts that have to appear (e.g.
+"1.75" and "1.50" separately, not "wash: $1.75; dry: $1.50" as one ordered
+string) or score against the chunk directly instead of the answer. The gap
+this unit found wasn't in my system — it was in a criterion I wrote before I
+had any evidence for what "correct" would actually look like coming out the
+other end.
