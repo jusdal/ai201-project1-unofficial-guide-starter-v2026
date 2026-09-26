@@ -490,34 +490,56 @@ genuine chunking-stage bug. Two separate problems, not one.
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** `chunker.py::_pack`'s runt guard now folds a trailing
+chunk into its neighbor based on the chunk's *total* length — title
+included — instead of the body alone. It takes a new `prefix_len` argument
+from `split_documents` and compares `prefix_len + len(body)` against a new
+`MIN_CHUNK_CHARS = 150`, instead of comparing the raw body against
+`MIN_BODY_CHARS = 100`.
 
-**Why I picked it:**
-
-<!-- Connect it to a specific diagnosis above in one sentence. If you can't,
-     you picked a fix because it sounded impressive. -->
+**Why I picked it:** This is the exact mechanism named in the criterion 4
+diagnosis above — the guard was checking body length before the title got
+added back, so three bodies that cleared 100 characters (97, 106, 113) still
+shipped under 150 once their title was prepended. Comparing against the
+same quantity the criterion measures is a direct fix for that, not a
+different lever.
 
 ### Run Log — After
 
-<!-- Same format, same five criteria, three runs each.
-     `python run_eval.py --label after` -->
+`python run_eval.py --label after`, run against the reindexed corpus
+(`python app.py index` after the chunker change): 94 chunks now, down from
+98 — the four short ones folded into their neighbors.
 
-| Criterion                              | Target | Run 1 | Run 2 | Run 3 | Verdict |
-| -------------------------------------- | ------ | ----- | ----- | ----- | ------- |
-| 1. Retrieved chunk contains the answer | 4 of 5 |       |       |       |         |
-| 2. Every answer names a source         | 5 of 5 |       |       |       |         |
-| 3. Gate stops out-of-corpus questions  | 4 of 5 |       |       |       |         |
-| 4.                                     |        |       |       |       |         |
-| 5.                                     |        |       |       |       |         |
+| Criterion                               | Target          | Run 1        | Run 2        | Run 3        | Verdict |
+| ---------------------------------------- | --------------- | ------------ | ------------ | ------------ | ------- |
+| 1. Retrieved chunk contains the answer   | 4 of 5          | 2/5          | 2/5          | 2/5          | MISSED  |
+| 2. Every answer names a source           | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
+| 3. Gate stops out-of-corpus questions    | 4 of 5          | 5/5          | 5/5          | 5/5          | MET     |
+| 4. No chunk under 150 or over 600        | 0 outside range | 0/94 outside | 0/94 outside | 0/94 outside | MET     |
+| 5. No hallucinated entities              | 5 of 5          | 5/5          | 5/5          | 5/5          | MET     |
 
-**Did it help?**
+Chunker output after the fix, from `chunker.py::split_documents`:
 
-<!-- Say plainly whether it did, and how you know. If it made things worse,
-     say that — a change that backfired, honestly reported, earns full credit
-     and is more interesting than one that worked. What matters is that you can
-     tell.
+```
+94 chunks, 299 characters on average (shortest 155, longest 426), produced by chunker.py::split_documents
+```
 
-     Milestone 4. -->
+Before the fix it was `98 chunks ... (shortest 123, longest 419)`. The four
+merged chunks land well inside the 150–600 range rather than at the edge of
+it, since the runt guard tolerates going over the packing budget to avoid
+shipping a fragment (same tradeoff it already made for `MIN_BODY_CHARS`).
+
+**Did it help?** Yes, for the criterion it targeted, and it didn't touch
+anything else. Criterion 4 goes from 4 of 98 chunks outside range to 0 of 94,
+in all three runs. Criteria 2, 3, and 5 stayed at the same 5/5 they were
+already at. Criterion 1 is unchanged too — 2/5 in all three runs, same three
+questions failing at the same distances (0.2133, 0.3901, 0.2374) as before —
+which is what I expected going in: none of the five test questions have one
+of the four merged documents as their top retrieved chunk, so a chunking
+change downstream of retrieval had nothing to move there. Criterion 1 stays
+MISSED for the reason diagnosed above (the scorer, not the pipeline), and I'm
+not attempting a second fix for it this milestone — one change, measured
+properly, was the point.
 
 ## What's Still Broken
 

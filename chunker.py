@@ -86,6 +86,13 @@ def fallback_split(
 # warns about — it gets folded back into the piece before it instead.
 MIN_BODY_CHARS = 100
 
+# The floor a whole chunk ships at, title included — matches criteria.md's
+# "no chunk under 150" bound. MIN_BODY_CHARS alone let four chunks through:
+# their bodies (97-113 chars) cleared 100, but the title added back on top
+# still landed the total under 150. The runt guard below checks against this
+# instead of MIN_BODY_CHARS so the fold decision matches what actually ships.
+MIN_CHUNK_CHARS = 150
+
 # A first paragraph this short, on a single line, is a title rather than
 # content. Every campus_life post has one: "The Atrium", "On-campus work",
 # "Old Brewhouse — what it's actually like".
@@ -135,8 +142,13 @@ def _split_long_paragraph(paragraph: str, budget: int) -> list[str]:
     return pieces or [paragraph]
 
 
-def _pack(paragraphs: list[str], budget: int) -> list[str]:
-    """Group whole paragraphs into bodies of at most `budget` characters."""
+def _pack(paragraphs: list[str], budget: int, prefix_len: int = 0) -> list[str]:
+    """Group whole paragraphs into bodies of at most `budget` characters.
+
+    `prefix_len` is the length of the title line that gets prepended to
+    every chunk after packing — needed here so the runt guard can judge a
+    trailing piece by what actually ships, not by the body alone.
+    """
     bodies: list[str] = []
     current: list[str] = []
     current_len = 0
@@ -160,7 +172,7 @@ def _pack(paragraphs: list[str], budget: int) -> list[str]:
 
     # Fold a trailing runt back into its neighbour rather than shipping a
     # fragment. Going a little over budget beats a chunk nobody can answer from.
-    if len(bodies) > 1 and len(bodies[-1]) < MIN_BODY_CHARS:
+    if len(bodies) > 1 and prefix_len + len(bodies[-1]) < MIN_CHUNK_CHARS:
         tail = bodies.pop()
         bodies[-1] = f"{bodies[-1]}\n\n{tail}"
 
@@ -209,7 +221,7 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
         prefix = f"{title}\n\n" if title else ""
         budget = max(chunk_size - len(prefix), MIN_BODY_CHARS)
 
-        for index, body in enumerate(_pack(paragraphs, budget)):
+        for index, body in enumerate(_pack(paragraphs, budget, prefix_len=len(prefix))):
             chunks.append(
                 Chunk(
                     text=f"{prefix}{body}",
